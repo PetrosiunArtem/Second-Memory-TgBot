@@ -1,0 +1,10 @@
+package org.example.telegrambot.tgbot;
+
+public enum UserState {
+  AWAITING_NAME,
+  FOOD_DRINK_SELECTION,
+  ALL_USERS_SELECTION,
+  ALL_USERS_SELECTION_FROM_MY_TOPICS,
+  PIZZA_TOPPINGS,
+  AWAITING_CONFIRMATION
+}
