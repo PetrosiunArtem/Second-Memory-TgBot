@@ -18,13 +18,13 @@ import lombok.Setter;
 @AllArgsConstructor
 @Getter
 @Setter
-@Table(name = "topics")
-public class TopicEntity {
+@Table(name = "followers")
+public class FollowerEntity {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   @Column(name = "id")
   private Long id;
 
-  @Column(name = "name", nullable = false, length = 50)
-  private String name;
+  @Column(name = "chat_id")
+  private long chatId;
 }

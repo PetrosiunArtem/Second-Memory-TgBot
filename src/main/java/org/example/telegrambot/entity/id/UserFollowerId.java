@@ -7,7 +7,7 @@ import java.io.Serializable;
 
 @Getter
 @Setter
-public class UserTopicId implements Serializable {
+public class UserFollowerId implements Serializable {
   private Long userId;
-  private Long topicId;
+  private Long followerId;
 }
