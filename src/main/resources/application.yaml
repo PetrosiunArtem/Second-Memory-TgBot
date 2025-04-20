@@ -22,8 +22,13 @@ spring:
   kafka:
     bootstrap-servers: "localhost:29093"
     consumer:
-      group-id: users_group
+      group-id: my_group
       enable-auto-commit: true
 
 topic-to-consume-users-message: users_topic
 topic-to-consume-files-message: files_topic
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html

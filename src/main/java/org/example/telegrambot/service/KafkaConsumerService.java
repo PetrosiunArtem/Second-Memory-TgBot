@@ -31,4 +31,8 @@ public class KafkaConsumerService {
     LOGGER.info("Retrieved MessageFileDto {}", message);
     filesService.saveMessage(parsedMessage);
   }
+  @KafkaListener(groupId = "kafkaGroupId", topicPattern = ".*")
+  public void consumeMessage(String message) {
+    LOGGER.info("Retrieved Message: {}", message);
+  }
 }
