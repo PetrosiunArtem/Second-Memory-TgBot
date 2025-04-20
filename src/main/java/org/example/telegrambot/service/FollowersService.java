@@ -2,6 +2,7 @@ package org.example.telegrambot.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.telegrambot.entity.CrsUserFollowerEntity;
 import org.example.telegrambot.repository.CrsUsersFollowersRepository;
 import org.example.telegrambot.repository.FollowersRepository;
 import org.springframework.stereotype.Service;
@@ -23,5 +24,19 @@ public class FollowersService {
       chatsIds.add(followersRepository.findById(id).get().getChatId());
     }
     return chatsIds;
+  }
+
+  public void subscribeToUser(Long followerId, Long userId) {
+    CrsUserFollowerEntity userFollower = new CrsUserFollowerEntity();
+    userFollower.setFollowerId(followerId);
+    userFollower.setUserId(userId);
+    crsUsersFollowersRepository.save(userFollower);
+  }
+
+  public void unsubscribeFromUser(Long followerId, Long userId) {
+    CrsUserFollowerEntity userFollower = new CrsUserFollowerEntity();
+    userFollower.setFollowerId(followerId);
+    userFollower.setUserId(userId);
+    crsUsersFollowersRepository.delete(userFollower);
   }
 }

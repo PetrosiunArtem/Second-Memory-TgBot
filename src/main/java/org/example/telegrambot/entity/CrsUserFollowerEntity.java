@@ -13,7 +13,7 @@ import org.example.telegrambot.entity.id.UserFollowerId;
 @IdClass(UserFollowerId.class)
 @Getter
 @Setter
-public class CrsUserFollowerEntity {
+public final class CrsUserFollowerEntity {
   @Id private Long userId;
 
   @Id private Long followerId;
