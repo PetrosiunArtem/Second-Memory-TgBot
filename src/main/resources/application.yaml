@@ -25,4 +25,5 @@ spring:
       group-id: users_group
       enable-auto-commit: true
 
-topic-to-consume-message: users_topic
+topic-to-consume-users-message: users_topic
+topic-to-consume-files-message: files_topic

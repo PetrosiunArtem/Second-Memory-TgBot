@@ -18,7 +18,7 @@ public class UsersService {
   private final TopicsRepository topicsRepository;
 
   public void saveMessage(MessageUserDto message) {
-    log.debug("save message");
+    log.debug("save MessageUserDto");
     usersRepository.save(new UserEntity(message.name(), message.email(), message.password()));
   }
 
