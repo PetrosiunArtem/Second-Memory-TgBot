@@ -1,5 +1,8 @@
 package org.example.telegrambot.tgbot;
 
+import org.example.telegrambot.service.FilesService;
+import org.example.telegrambot.service.FollowersService;
+import org.example.telegrambot.service.UsersService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.telegram.abilitybots.api.bot.AbilityBot;
@@ -23,9 +26,13 @@ public class SecondMemoryBot extends AbilityBot {
   @Value("${BOT_TOKEN}")
   private String token;
 
-  public SecondMemoryBot(@Value("${BOT_TOKEN}") String token) {
+  public SecondMemoryBot(
+      @Value("${BOT_TOKEN}") String token,
+      UsersService usersService,
+      FilesService filesService,
+      FollowersService followersService) {
     super(token, "Second Memory");
-    responseHandler = new ResponseHandler(silent, db);
+    responseHandler = new ResponseHandler(silent, db, usersService, filesService, followersService);
   }
 
   public Ability startBot() {

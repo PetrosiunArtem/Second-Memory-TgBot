@@ -1,31 +1,48 @@
 package org.example.telegrambot.tgbot;
 
+import org.example.telegrambot.entity.UserEntity;
+import org.example.telegrambot.service.FilesService;
+import org.example.telegrambot.service.FollowersService;
+import org.example.telegrambot.service.UsersService;
 import org.telegram.abilitybots.api.db.DBContext;
 import org.telegram.abilitybots.api.sender.SilentSender;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
-
+import java.util.List;
 import java.util.Map;
-
 import static org.example.telegrambot.tgbot.Constants.START_TEXT;
-import static org.example.telegrambot.tgbot.UserState.AWAITING_CONFIRMATION;
+import static org.example.telegrambot.tgbot.UserState.ALL_USERS_SELECTION;
+import static org.example.telegrambot.tgbot.UserState.ALL_USERS_SELECTION_FROM_TOPICS;
+import static org.example.telegrambot.tgbot.UserState.ALL_USERS_SELECTION_NOT_OF_THE_TOPICS;
 import static org.example.telegrambot.tgbot.UserState.AWAITING_NAME;
-import static org.example.telegrambot.tgbot.UserState.FOOD_DRINK_SELECTION;
-import static org.example.telegrambot.tgbot.UserState.PIZZA_TOPPINGS;
+import static org.example.telegrambot.tgbot.UserState.TO_DO_SELECTION;
 
 public class ResponseHandler {
   private final SilentSender sender;
   private final Map<Long, UserState> chatStates;
 
-  public ResponseHandler(SilentSender sender, DBContext db) {
+  private final UsersService usersService;
+  private final FilesService filesService;
+  private final FollowersService followersService;
+
+  public ResponseHandler(
+      SilentSender sender,
+      DBContext db,
+      UsersService usersService,
+      FilesService filesService,
+      FollowersService followersService) {
     this.sender = sender;
-    chatStates = db.getMap(Constants.CHAT_STATES);
+    this.chatStates = db.getMap(Constants.CHAT_STATES);
+    this.usersService = usersService;
+    this.filesService = filesService;
+    this.followersService = followersService;
   }
 
   public void replyToStart(Long chatId) {
     SendMessage message = new SendMessage();
+    followersService.save(chatId);
     message.setChatId(chatId.toString());
     message.setText(START_TEXT);
     sender.execute(message);
@@ -39,10 +56,97 @@ public class ResponseHandler {
 
     switch (chatStates.get(chatId)) {
       case AWAITING_NAME -> replyToName(chatId, message);
-      case FOOD_DRINK_SELECTION -> replyToFoodDrinkSelection(chatId, message);
-      case PIZZA_TOPPINGS -> replyToPizzaToppings(chatId, message);
-      case AWAITING_CONFIRMATION -> replyToOrder(chatId, message);
+      case TO_DO_SELECTION -> replyToDoSelection(chatId, message);
+      case ALL_USERS_SELECTION -> replyToAllUsersSelection(chatId, message);
+      case ALL_USERS_SELECTION_FROM_TOPICS -> replyToAllUsersSelectionFromTopics(chatId, message);
+      case ALL_USERS_SELECTION_NOT_OF_THE_TOPICS ->
+          replyToAllUsersSelectionNotOfTheTopics(chatId, message);
       default -> unexpectedMessage(chatId);
+    }
+  }
+
+  private void replyToDoSelection(Long chatId, Message message) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(chatId.toString());
+    String text = message.getText();
+    sendMessage.setText("Chose the user");
+    if ("files".equalsIgnoreCase(text)) {
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard()); // ;ddsdd
+      sender.execute(sendMessage);
+      chatStates.put(chatId, ALL_USERS_SELECTION);
+    } else if ("subscribe".equalsIgnoreCase(text)) {
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard()); // ;ddsdd
+      sender.execute(sendMessage);
+      chatStates.put(chatId, ALL_USERS_SELECTION_FROM_TOPICS);
+    } else if ("unsubscribe".equalsIgnoreCase(text)) {
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard()); // ;ddsdd
+      sender.execute(sendMessage);
+      chatStates.put(chatId, ALL_USERS_SELECTION_NOT_OF_THE_TOPICS);
+    } else if ("stop".equalsIgnoreCase(text)) {
+      stopChat(chatId);
+    } else {
+      sendMessage.setText("Please select files, subscribe, unsubscribe or stop");
+      sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection()); // dsdsdsdsd
+      sender.execute(sendMessage);
+    }
+  }
+
+  private void replyToAllUsersSelection(Long chatId, Message message) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(chatId.toString());
+    List<String> names = usersService.getAllUsersNames();
+    if (names.contains(message.getText())) {
+      UserEntity user = usersService.getUserByName(message.getText());
+      List<String> filesNames = filesService.getAllFilesKeysWithOwnerId(user.getId());
+      StringBuilder stringBuilder = new StringBuilder();
+      for (String name : filesNames) {
+        stringBuilder.append(name);
+        stringBuilder.append("\n");
+      }
+      sendMessage.setText(stringBuilder.toString());
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard()); // Допилить
+      sender.execute(sendMessage);
+      chatStates.put(chatId, TO_DO_SELECTION);
+    } else {
+      sendMessage.setText("Please select one person from the list");
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getAllUsersKeyboard()); // тут
+      sender.execute(sendMessage);
+    }
+  }
+
+  private void replyToAllUsersSelectionFromTopics(Long chatId, Message message) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(chatId.toString());
+    List<Long> myUsers = usersService.getAllUsersWithoutChatId(chatId);
+    UserEntity user = usersService.getUserByName(message.getText());
+    if (myUsers.contains(user.getId())) {
+      followersService.subscribeToUser(chatId, user.getId());
+      sendMessage.setText("You have been subscribed to " + user.getName());
+      sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection()); // Допилить
+      sender.execute(sendMessage);
+      chatStates.put(chatId, TO_DO_SELECTION);
+    } else {
+      sendMessage.setText("Please  select one person from the list");
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getYesOrNo()); // тут
+      sender.execute(sendMessage);
+    }
+  }
+
+  private void replyToAllUsersSelectionNotOfTheTopics(Long chatId, Message message) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(chatId.toString());
+    List<Long> followers = followersService.getAllUsersIdsWithChatId(chatId);
+    UserEntity user = usersService.getUserByName(message.getText());
+    if (followers.contains(user.getId())) {
+      followersService.unsubscribeFromUser(chatId, user.getId());
+      sendMessage.setText("You have been unsubscribed to " + user.getName());
+      sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection()); // Допилить
+      sender.execute(sendMessage);
+      chatStates.put(chatId, TO_DO_SELECTION);
+    } else {
+      sendMessage.setText("Please select one person from the list");
+      //      sendMessage.setReplyMarkup(KeyboardFactory.getYesOrNo()); // тут
+      sender.execute(sendMessage);
     }
   }
 
@@ -62,45 +166,6 @@ public class ResponseHandler {
     sender.execute(sendMessage);
   }
 
-  private void replyToOrder(Long chatId, Message message) {
-    SendMessage sendMessage = new SendMessage();
-    sendMessage.setChatId(chatId.toString());
-    if ("yes".equalsIgnoreCase(message.getText())) {
-      sendMessage.setText("We will deliver it soon. Thank you!\nOrder another?");
-      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard());
-      sender.execute(sendMessage);
-      chatStates.put(chatId, FOOD_DRINK_SELECTION);
-    } else if ("no".equalsIgnoreCase(message.getText())) {
-      stopChat(chatId);
-    } else {
-      sendMessage.setText("Please select yes or no");
-      sendMessage.setReplyMarkup(KeyboardFactory.getYesOrNo());
-      sender.execute(sendMessage);
-    }
-  }
-
-  private void replyToPizzaToppings(Long chatId, Message message) {
-    if ("margherita".equalsIgnoreCase(message.getText())) {
-      promptWithKeyboardForState(
-          chatId,
-          "You selected Margherita Pizza.\nWe will deliver it soon. Thank you!\nOrder again?",
-          KeyboardFactory.getYesOrNo(),
-          AWAITING_CONFIRMATION);
-    } else if ("pepperoni".equalsIgnoreCase(message.getText())) {
-      promptWithKeyboardForState(
-          chatId,
-          "We finished the Pepperoni Pizza.\nSelect another Topping",
-          KeyboardFactory.getPizzaToppingsKeyboard(),
-          PIZZA_TOPPINGS);
-    } else {
-      SendMessage sendMessage = new SendMessage();
-      sendMessage.setChatId(chatId.toString());
-      sendMessage.setText("We don't sell " + message.getText() + " Pizza.\nSelect the toppings!");
-      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaToppingsKeyboard());
-      sender.execute(sendMessage);
-    }
-  }
-
   private void promptWithKeyboardForState(
       Long chatId, String text, ReplyKeyboard keyBoardYesOrNo, UserState awaitingReorder) {
     SendMessage sendMessage = new SendMessage();
@@ -111,37 +176,15 @@ public class ResponseHandler {
     chatStates.put(chatId, awaitingReorder);
   }
 
-  private void replyToFoodDrinkSelection(Long chatId, Message message) {
-    SendMessage sendMessage = new SendMessage();
-    sendMessage.setChatId(chatId.toString());
-    if ("drink".equalsIgnoreCase(message.getText())) {
-      sendMessage.setText("We don't sell drinks.\nBring your own drink!! :)");
-      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard());
-      sender.execute(sendMessage);
-    } else if ("pizza".equalsIgnoreCase(message.getText())) {
-      sendMessage.setText("We love Pizza in here.\nSelect the toppings!");
-      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaToppingsKeyboard());
-      sender.execute(sendMessage);
-      chatStates.put(chatId, PIZZA_TOPPINGS);
-    } else {
-      sendMessage.setText(
-          "We don't sell " + message.getText() + ". Please select from the options below.");
-      sendMessage.setReplyMarkup(KeyboardFactory.getPizzaOrDrinkKeyboard());
-      sender.execute(sendMessage);
-    }
-  }
-
   private void replyToName(long chatId, Message message) {
     promptWithKeyboardForState(
         chatId,
-        "Hello " + message.getText() + ". What would you like to have?",
-        KeyboardFactory.getPizzaOrDrinkKeyboard(),
-        FOOD_DRINK_SELECTION);
+        "Hello " + message.getText() + ". What do yo do?",
+        KeyboardFactory.getActionSelection(),
+        TO_DO_SELECTION);
   }
 
   public boolean userIsActive(Long chatId) {
     return chatStates.containsKey(chatId);
   }
-
-  private void replyToAllUsersSelected(Long chatId) {}
 }

@@ -32,4 +32,16 @@ public class UsersService {
     log.debug("Select all users names");
     return usersRepository.findAll().stream().map(UserEntity::getName).toList();
   }
+
+  public UserEntity getUserByName(String name) {
+    return usersRepository.findByNameLike(name).orElseThrow();
+  }
+
+  public List<Long> getAllUsersIds() {
+    return usersRepository.findAll().stream().map(UserEntity::getId).toList();
+  }
+
+  public List<Long> getAllUsersWithoutChatId(Long chatId) {
+    return usersRepository.findAllUsersWithoutByChatId(chatId);
+  }
 }

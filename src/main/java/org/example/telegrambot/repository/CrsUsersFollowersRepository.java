@@ -14,4 +14,9 @@ public interface CrsUsersFollowersRepository extends JpaRepository<CrsUserFollow
       value = "SELECT follower_id FROM users_followers WHERE user_id = :userId",
       nativeQuery = true)
   List<Long> findByUserId(@Param("userId") Long userId);
+
+  @Query(
+      value = "SELECT user_id FROM users_followers WHERE follower_id = :followerId",
+      nativeQuery = true)
+  List<Long> findByFollowerId(@Param("followerId") Long followerId);
 }

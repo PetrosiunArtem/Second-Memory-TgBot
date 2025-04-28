@@ -2,8 +2,6 @@ package org.example.telegrambot.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -20,11 +18,8 @@ import lombok.Setter;
 @Setter
 @Table(name = "followers")
 public class FollowerEntity {
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "id")
-  private Long id;
 
+  @Id
   @Column(name = "chat_id")
   private long chatId;
 }

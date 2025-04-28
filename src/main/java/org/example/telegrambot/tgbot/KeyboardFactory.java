@@ -12,24 +12,12 @@ import java.util.List;
 public class KeyboardFactory {
   private final UsersService usersService;
 
-  public static ReplyKeyboard getPizzaToppingsKeyboard() {
+  public static ReplyKeyboard getActionSelection() {
     KeyboardRow row = new KeyboardRow();
-    row.add("Margherita");
-    row.add("Pepperoni");
-    return new ReplyKeyboardMarkup(List.of(row));
-  }
-
-  public static ReplyKeyboard getPizzaOrDrinkKeyboard() {
-    KeyboardRow row = new KeyboardRow();
-    row.add("Pizza");
-    row.add("Drink");
-    return new ReplyKeyboardMarkup(List.of(row));
-  }
-
-  public static ReplyKeyboard getYesOrNo() {
-    KeyboardRow row = new KeyboardRow();
-    row.add("Yes");
-    row.add("No");
+    row.add("files");
+    row.add("subscribe");
+    row.add("unsubscribe");
+    row.add("stop");
     return new ReplyKeyboardMarkup(List.of(row));
   }
 
