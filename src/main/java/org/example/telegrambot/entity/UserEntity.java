@@ -31,10 +31,4 @@ public class UserEntity {
 
   @Column(name = "password")
   private String password;
-
-  public UserEntity(String name, String email, String password, String topic) {
-    this.name = name;
-    this.email = email;
-    this.password = password;
-  }
 }

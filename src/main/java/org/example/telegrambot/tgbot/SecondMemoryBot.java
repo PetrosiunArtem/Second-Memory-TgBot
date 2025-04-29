@@ -1,5 +1,6 @@
 package org.example.telegrambot.tgbot;
 
+import lombok.Getter;
 import org.example.telegrambot.service.FilesService;
 import org.example.telegrambot.service.FollowersService;
 import org.example.telegrambot.service.UsersService;
@@ -21,7 +22,7 @@ import static org.telegram.abilitybots.api.util.AbilityUtils.getChatId;
 @Component
 public class SecondMemoryBot extends AbilityBot {
 
-  private final ResponseHandler responseHandler;
+  @Getter private final ResponseHandler responseHandler;
 
   @Value("${BOT_TOKEN}")
   private String token;

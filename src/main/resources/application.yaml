@@ -4,7 +4,7 @@ spring:
   application:
     name: secondMemoryTgBot
   datasource:
-    url: "jdbc:postgresql://localhost:5437/postgres"
+    url: "jdbc:postgresql://localhost:5435/postgres"
     username: postgres
     password: changeme
     driver-class-name: org.postgresql.Driver
@@ -16,16 +16,12 @@ spring:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-  flyway:
-    enabled: true
-    validate-on-migrate: true
   kafka:
     bootstrap-servers: "localhost:29093"
     consumer:
       group-id: my_group
       enable-auto-commit: true
 
-topic-to-consume-users-message: users_topic
 topic-to-consume-files-message: files_topic
 
 springdoc:
