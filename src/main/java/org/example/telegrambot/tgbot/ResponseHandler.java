@@ -1,6 +1,7 @@
 package org.example.telegrambot.tgbot;
 
 import org.example.telegrambot.entity.UserEntity;
+import org.example.telegrambot.repository.UsersRepository;
 import org.example.telegrambot.service.FilesService;
 import org.example.telegrambot.service.FollowersService;
 import org.example.telegrambot.service.UsersService;
@@ -8,6 +9,7 @@ import org.telegram.abilitybots.api.db.DBContext;
 import org.telegram.abilitybots.api.sender.SilentSender;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import java.util.List;
@@ -24,21 +26,28 @@ import static org.example.telegrambot.tgbot.UserState.TO_DO_SELECTION;
 public class ResponseHandler {
   private final SilentSender sender;
   private final Map<Long, UserState> chatStates;
+  private final Map<Long, PaginationState> paginationStates;
   private final UsersService usersService;
   private final FilesService filesService;
   private final FollowersService followersService;
+  private final UsersRepository usersRepository;
+  private static final int SKIP_SIZE = 1;
 
   public ResponseHandler(
       SilentSender sender,
       DBContext db,
+      Map<Long, PaginationState> paginationStates,
       UsersService usersService,
       FilesService filesService,
-      FollowersService followersService) {
+      FollowersService followersService,
+      UsersRepository usersRepository) {
     this.sender = sender;
     this.chatStates = db.getMap(Constants.CHAT_STATES);
+    this.paginationStates = paginationStates;
     this.usersService = usersService;
     this.filesService = filesService;
     this.followersService = followersService;
+    this.usersRepository = usersRepository;
   }
 
   public void replyToStart(Long chatId) {
@@ -46,15 +55,21 @@ public class ResponseHandler {
     followersService.save(chatId);
     message.setChatId(chatId.toString());
     message.setText(START_TEXT);
+
+    //    message.setReplyMarkup(KeyboardFactory.getFirstInlineKeyboard(1, 10));
     sender.execute(message);
+    paginationStates.put(chatId, PaginationState.DEFAULT);
     chatStates.put(chatId, AWAITING_NAME);
   }
 
-  public void replyToButtons(Long chatId, Message message) {
+  public void replyToButtons(Long chatId, Update update) {
+    Message message = update.getMessage();
     if (message.getText().equalsIgnoreCase("/stop")) {
       stopChat(chatId);
     }
-
+    if (!chatStates.containsKey(chatId)) {
+      return;
+    }
     switch (chatStates.get(chatId)) {
       case AWAITING_NAME -> replyToName(chatId, message);
       case TO_DO_SELECTION -> replyToDoSelection(chatId, message);
@@ -74,12 +89,18 @@ public class ResponseHandler {
     if ("files".equalsIgnoreCase(text)) {
       sender.execute(sendMessage);
       chatStates.put(chatId, ALL_USERS_SELECTION);
+      paginationStates.put(chatId, PaginationState.ALL_USERS);
+      getAllUsersWithPagination(chatId, 1);
     } else if ("subscribe".equalsIgnoreCase(text)) {
       sender.execute(sendMessage);
+      paginationStates.put(chatId, PaginationState.ALL_USERS_WITHOUT_CHAT_ID);
       chatStates.put(chatId, ALL_USERS_SELECTION_FROM_TOPICS);
+      getAllUsersWithoutByChatIdWithPagination(chatId, 1);
     } else if ("unsubscribe".equalsIgnoreCase(text)) {
       sender.execute(sendMessage);
+      paginationStates.put(chatId, PaginationState.ALL_USERS_WITH_CHAT_ID);
       chatStates.put(chatId, ALL_USERS_SELECTION_NOT_OF_THE_TOPICS);
+      getAllUsersWithByChatIdWithPagination(chatId, 1);
     } else if ("stop".equalsIgnoreCase(text)) {
       stopChat(chatId);
     } else {
@@ -100,6 +121,7 @@ public class ResponseHandler {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(chatId.toString());
     List<String> names = usersService.getAllUsersNames();
+    int page = 1;
     if (names.isEmpty()) {
       sendMessage.setText("There are no people you can check files to");
       sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection());
@@ -108,6 +130,7 @@ public class ResponseHandler {
       return;
     }
     if ("return".equalsIgnoreCase(message.getText())) {
+
       goBackToActionSelection(chatId);
     } else if (names.contains(message.getText())) {
       Optional<UserEntity> user = usersService.getUserByName(message.getText());
@@ -116,6 +139,7 @@ public class ResponseHandler {
         sendMessage.setText(
             "Please select one person from the list or write 'return' for go back to the chat");
         sender.execute(sendMessage);
+        getAllUsersWithPagination(chatId, page);
         return;
       }
       List<String> filesNames = filesService.getAllFilesKeysWithOwnerId(user.get().getId());
@@ -131,6 +155,7 @@ public class ResponseHandler {
       sendMessage.setText(
           "Please select one person from the list or write 'return' for go back to the chat");
       sender.execute(sendMessage);
+      getAllUsersWithPagination(chatId, page);
     }
   }
 
@@ -208,6 +233,65 @@ public class ResponseHandler {
     chatStates.remove(chatId);
     sendMessage.setReplyMarkup(new ReplyKeyboardRemove(true));
     sender.execute(sendMessage);
+  }
+
+  private void getAllUsersWithPagination(long chatId, int page) {
+    int count = Math.max(1, (usersRepository.countAllUsers() + SKIP_SIZE - 1) / SKIP_SIZE);
+    SendMessage sendMessage = getSendMessage(chatId, getAllUsers(page), page, count);
+    sender.execute(sendMessage);
+  }
+
+  private void getAllUsersWithoutByChatIdWithPagination(long chatId, int page) {
+    int count =
+        Math.max(
+            1, (usersRepository.countAllUsersWithoutByChatId(chatId) + SKIP_SIZE - 1) / SKIP_SIZE);
+    SendMessage sendMessage =
+        getSendMessage(chatId, getAllUsersWithoutByChatId(chatId, page), page, count);
+    sender.execute(sendMessage);
+  }
+
+  private void getAllUsersWithByChatIdWithPagination(long chatId, int page) {
+    int count =
+        Math.max(
+            1, (usersRepository.countAllUsersWithByChatId(chatId) + SKIP_SIZE - 1) / SKIP_SIZE);
+    SendMessage sendMessage =
+        getSendMessage(chatId, getAllUsersWithByChatId(chatId, page), page, count);
+    sender.execute(sendMessage);
+  }
+
+  private SendMessage getSendMessage(long chatId, String message, int page, int count) {
+    SendMessage sendMessage = new SendMessage();
+    sendMessage.setChatId(chatId);
+    sendMessage.setText(message);
+    sendMessage.setReplyMarkup(KeyboardFactory.getFirstInlineKeyboard(page, count));
+    return sendMessage;
+  }
+
+  private String getAllUsers(int page) {
+    List<String> names = usersRepository.findAllUsersWithPagination(page, SKIP_SIZE);
+
+    return readNames(names);
+  }
+
+  private String getAllUsersWithByChatId(long chatId, int page) {
+    List<String> names =
+        usersRepository.findAllUsersWithByChatIdWithPagination(chatId, page, SKIP_SIZE);
+    return readNames(names);
+  }
+
+  private String getAllUsersWithoutByChatId(long chatId, int page) {
+    List<String> names =
+        usersRepository.findAllUsersWithoutByChatIdWithPagination(chatId, page, SKIP_SIZE);
+    return readNames(names);
+  }
+
+  private static String readNames(List<String> names) {
+    StringBuilder stringBuilder = new StringBuilder();
+    for (String name : names) {
+      stringBuilder.append(name);
+      stringBuilder.append("\n");
+    }
+    return stringBuilder.toString();
   }
 
   private void goBackToActionSelection(Long chatId) {
