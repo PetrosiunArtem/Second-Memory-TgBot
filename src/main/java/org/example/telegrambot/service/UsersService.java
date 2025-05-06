@@ -24,10 +24,6 @@ public class UsersService {
     return usersRepository.findByNameLike(name);
   }
 
-  public List<Long> getAllUsersIds() {
-    return usersRepository.findAll().stream().map(UserEntity::getId).toList();
-  }
-
   public List<Long> getAllUsersWithoutChatId(Long chatId) {
     return usersRepository.findAllUsersWithoutByChatId(chatId);
   }

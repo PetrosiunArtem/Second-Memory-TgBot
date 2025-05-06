@@ -3,7 +3,6 @@ package org.example.telegrambot.tgbot;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.SneakyThrows;
-import org.apache.kafka.common.protocol.types.Field;
 import org.example.telegrambot.dto.MessageForPagination;
 import org.example.telegrambot.repository.UsersRepository;
 import org.example.telegrambot.service.FilesService;
@@ -16,11 +15,10 @@ import org.telegram.abilitybots.api.bot.BaseAbilityBot;
 import org.telegram.abilitybots.api.objects.Ability;
 import org.telegram.abilitybots.api.objects.Flag;
 import org.telegram.abilitybots.api.objects.Reply;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.DeleteMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
-
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -36,7 +34,7 @@ public class SecondMemoryBot extends AbilityBot {
   private final ObjectMapper objectMapper;
   private final Map<Long, PaginationState> paginationStates;
   private final UsersRepository usersRepository;
-  private static final int SKIP_SIZE = 1;
+  private static final int SKIP_SIZE = 4;
 
   @Value("${BOT_TOKEN}")
   private String token;
@@ -87,13 +85,22 @@ public class SecondMemoryBot extends AbilityBot {
       String[] request = update.getCallbackQuery().getData().split("_");
       long chatId = update.getCallbackQuery().getMessage().getChatId();
       if (request[0].equals("unseen")) {
-        responseHandler.replyToButtons(chatId, update);
+        DeleteMessage deleteMessage =
+            DeleteMessage.builder()
+                .chatId(chatId)
+                .messageId(update.getCallbackQuery().getMessage().getMessageId())
+                .build();
+        sender.execute(deleteMessage);
+        responseHandler.goBackToActionSelection(chatId);
       } else if (request[0].contains("pagination")) {
         MessageForPagination message =
             objectMapper.readValue(request[0], MessageForPagination.class);
         int count = message.countPage();
         int page = message.numberPage();
         String text;
+        if (!paginationStates.containsKey(chatId)) {
+          paginationStates.put(chatId, PaginationState.DEFAULT);
+        }
         switch (paginationStates.get(chatId)) {
           case ALL_USERS -> text = getAllUsers(page);
           case ALL_USERS_WITH_CHAT_ID -> text = getAllUsersWithByChatId(chatId, page);

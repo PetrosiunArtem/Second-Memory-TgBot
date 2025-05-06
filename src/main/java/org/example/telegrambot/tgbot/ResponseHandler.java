@@ -31,7 +31,7 @@ public class ResponseHandler {
   private final FilesService filesService;
   private final FollowersService followersService;
   private final UsersRepository usersRepository;
-  private static final int SKIP_SIZE = 1;
+  private static final int SKIP_SIZE = 4;
 
   public ResponseHandler(
       SilentSender sender,
@@ -55,8 +55,6 @@ public class ResponseHandler {
     followersService.save(chatId);
     message.setChatId(chatId.toString());
     message.setText(START_TEXT);
-
-    //    message.setReplyMarkup(KeyboardFactory.getFirstInlineKeyboard(1, 10));
     sender.execute(message);
     paginationStates.put(chatId, PaginationState.DEFAULT);
     chatStates.put(chatId, AWAITING_NAME);
@@ -85,7 +83,7 @@ public class ResponseHandler {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(chatId.toString());
     String text = message.getText();
-    sendMessage.setText("Chose the user");
+    sendMessage.setText("Choose the user");
     if ("files".equalsIgnoreCase(text)) {
       sender.execute(sendMessage);
       chatStates.put(chatId, ALL_USERS_SELECTION);
@@ -163,6 +161,7 @@ public class ResponseHandler {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(chatId.toString());
     List<Long> myUsers = usersService.getAllUsersWithoutChatId(chatId);
+    int page = 1;
     if (myUsers.isEmpty()) {
       sendMessage.setText("There are no people you can subscribe to");
       sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection()); // Допилить
@@ -180,6 +179,7 @@ public class ResponseHandler {
       sendMessage.setText(
           "Please select one person from the list or write 'return' for go back to the chat");
       sender.execute(sendMessage);
+      getAllUsersWithoutByChatIdWithPagination(chatId, page);
     } else {
       followersService.subscribeToUser(chatId, user.get().getId());
       sendMessage.setText("You have been subscribed to " + user.get().getName());
@@ -193,9 +193,10 @@ public class ResponseHandler {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(chatId.toString());
     List<Long> followers = followersService.getAllUsersIdsWithChatId(chatId);
+    int page = 1;
     if (followers.isEmpty()) {
       sendMessage.setText("There are no people you can unsubscribe to");
-      sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection()); // Допилить
+      sendMessage.setReplyMarkup(KeyboardFactory.getActionSelection());
       sender.execute(sendMessage);
       chatStates.put(chatId, TO_DO_SELECTION);
       return;
@@ -209,6 +210,7 @@ public class ResponseHandler {
       sendMessage.setText(
           "Please select one person from the list or write 'return' for go back to the chat");
       sender.execute(sendMessage);
+      getAllUsersWithByChatIdWithPagination(chatId, page);
     } else if (followers.contains(user.get().getId())) {
       followersService.unsubscribeFromUser(chatId, user.get().getId());
       sendMessage.setText("You have been unsubscribed to " + user.get().getName());
@@ -229,7 +231,7 @@ public class ResponseHandler {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(chatId.toString());
     sendMessage.setText(
-        "Thank you for your questions. See you soon!\nPress /start to find files in our service again");
+        "Thank you for joining us. See you soon! Click /start to find the files in our service again.");
     chatStates.remove(chatId);
     sendMessage.setReplyMarkup(new ReplyKeyboardRemove(true));
     sender.execute(sendMessage);
@@ -294,7 +296,7 @@ public class ResponseHandler {
     return stringBuilder.toString();
   }
 
-  private void goBackToActionSelection(Long chatId) {
+  public void goBackToActionSelection(Long chatId) {
     SendMessage sendMessage = new SendMessage();
     sendMessage.setChatId(chatId.toString());
     sendMessage.setText("You was returned to the chat");
