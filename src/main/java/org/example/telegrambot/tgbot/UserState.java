@@ -1,0 +1,9 @@
+package org.example.telegrambot.tgbot;
+
+public enum UserState {
+  AWAITING_NAME,
+  TO_DO_SELECTION,
+  ALL_USERS_SELECTION,
+  ALL_USERS_SELECTION_FROM_TOPICS,
+  ALL_USERS_SELECTION_NOT_OF_THE_TOPICS
+}

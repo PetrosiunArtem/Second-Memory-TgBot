@@ -1,0 +1,30 @@
+spring:
+  config:
+    import: env.yaml
+  application:
+    name: secondMemoryTgBot
+  datasource:
+    url: "jdbc:postgresql://localhost:5435/postgres"
+    username: postgres
+    password: changeme
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  kafka:
+    bootstrap-servers: "localhost:29093"
+    consumer:
+      group-id: my_group
+      enable-auto-commit: true
+
+topic-to-consume-files-message: files_topic
+
+springdoc:
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui.html
