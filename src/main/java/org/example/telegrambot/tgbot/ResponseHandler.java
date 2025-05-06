@@ -318,7 +318,7 @@ public class ResponseHandler {
   private void replyToName(long chatId, Message message) {
     promptWithKeyboardForState(
         chatId,
-        "Hello " + message.getText() + ". What do yo do?",
+        "Hello " + message.getText() + ". Choose actions",
         KeyboardFactory.getActionSelection(),
         TO_DO_SELECTION);
   }
